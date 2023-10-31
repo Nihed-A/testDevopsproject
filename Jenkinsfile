@@ -4,7 +4,7 @@ pipeline {
         maven 'M2_HOME'
     }
     environment {
-        NEXUS_VERSION = "nexus11"
+
         NEXUS_PROTOCOL = "http"
         NEXUS_URL = "192.168.33.10:8081"
         NEXUS_REPOSITORY = "maven-kaddem-repository"
@@ -27,7 +27,7 @@ pipeline {
         }
            stage('Nexus') {
                steps {
-                   withCredentials([usernamePassword(credentialsId: 'NexusUserCreds', usernameVariable: 'Admin', passwordVariable: 'nexus')]) {
+                   withCredentials([usernamePassword(credentialsId: 'NexusUserCreds', usernameVariable: 'admin', passwordVariable: 'nexus')]) {
                        sh "mvn clean deploy -DskipTests -Dmaven.install.skip=true -DaltDeploymentRepository=deploymentRepo::default::${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_REPOSITORY}/ -DaltReleaseDeploymentPolicyId=deploymentRepo"
                    }
                }
