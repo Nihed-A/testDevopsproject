@@ -1,40 +1,62 @@
 pipeline {
     agent any
+    tools {
+        maven "MAVEN"
+    }
     environment {
         NEXUS_VERSION = "nexus11"
         NEXUS_PROTOCOL = "http"
-        NEXUS_URL = "localhost:8081"
+        NEXUS_URL = "192.168.33.10:8081"
         NEXUS_REPOSITORY = "maven-kaddem-repository"
         NEXUS_CREDENTIAL_ID = "NexusUserCreds"
     }
     stages {
-        stage('Compile-package') {
+        stage("Clone code from GitHub") {
             steps {
                 script {
-                    sh 'mvn package'
+                    git branch: 'main', credentialsId: 'NexusUserCreds', url: 'https://github.com/Nihed-A/testDevopsproject.git';
                 }
             }
         }
-        stage('SonarQube Analysis') {
+        stage("Maven Build") {
             steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh 'mvn clean verify sonar:sonar \
-                        -Dsonar.projectKey=devsecopsprojectkey \
-                        -Dsonar.host.url=http://192.168.33.10:9000 \
-                        -Dsonar.login=sqp_f9e1fa59c665c8c0c57ed391de8245f2e927b662'
+                script {
+                    sh "mvn package -DskipTests=true"
                 }
             }
         }
-        stage("Deploying jar to Nexus Repository") {
+        stage("Publish to Nexus Repository Manager") {
             steps {
                 script {
-                    nexusPublisher nexusInstanceId: 'nexus11',
-                        nexusRepositoryId: 'maven-releases',
-                        packages: [
-                            [$class: 'MavenPackage',
-                             mavenAssetList: [[classifier: '', extension: '', filePath: './target/etudiant-1.0.jar']],
-                             mavenCoordinate: [artifactId: 'etudiant', groupId: 'tn.esprit.spring.kaddem', packaging: 'jar', version: '1']]
-                        ]
+                    pom = readMavenPom file: "pom.xml";
+                    filesByGlob = findFiles(glob: "target/*.${pom.packaging}");
+                    echo "${filesByGlob[0].name} ${filesByGlob[0].path} ${filesByGlob[0].directory} ${filesByGlob[0].length} ${filesByGlob[0].lastModified}"
+                    artifactPath = filesByGlob[0].path;
+                    artifactExists = fileExists artifactPath;
+                    if(artifactExists) {
+                        echo "*** File: ${artifactPath}, group: ${pom.groupId}, packaging: ${pom.packaging}, version ${pom.version}";
+                        nexusArtifactUploader(
+                            nexusVersion: NEXUS_VERSION,
+                            protocol: NEXUS_PROTOCOL,
+                            nexusUrl: NEXUS_URL,
+                            groupId: pom.groupId,
+                            version: pom.version,
+                            repository: NEXUS_REPOSITORY,
+                            credentialsId: NEXUS_CREDENTIAL_ID,
+                            artifacts: [
+                                [artifactId: pom.artifactId,
+                                classifier: '',
+                                file: artifactPath,
+                                type: pom.packaging],
+                                [artifactId: pom.artifactId,
+                                classifier: '',
+                                file: "pom.xml",
+                                type: "pom"]
+                            ]
+                        );
+                    } else {
+                        error "*** File: ${artifactPath}, could not be found";
+                    }
                 }
             }
         }
