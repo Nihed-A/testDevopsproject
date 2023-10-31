@@ -25,13 +25,11 @@ pipeline {
                 }
             }
         }
-        stage("Deploying jar to Nexus Repository") {
-            steps {
-                script {
-                 nexusPublisher nexusInstanceId: 'nexus', nexusRepositoryId: 'maven-releases', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: './target/etudiant-1.0.jar']],mavenCoordinate: [artifactId: 'etudiant', groupId: 'tn.esprit.spring.kaddem', packaging: 'jar', version: '1']]]
-
+           stage ('Nexus') {
+                    steps {
+                    echo "Nexus";
+                        sh 'mvn clean deploy -DskipTests -Dmaven.install.skip=true';
+                    }
                 }
-            }
-        }
     }
 }
