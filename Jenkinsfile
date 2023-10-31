@@ -25,11 +25,13 @@ pipeline {
                 }
             }
         }
-           stage ('Nexus') {
-                    steps {
-                    echo "Nexus";
-                        sh 'mvn clean deploy -DskipTests -Dmaven.install.skip=true';
-                    }
-                }
+           stage('Nexus') {
+               steps {
+                   withCredentials([usernamePassword(credentialsId: 'NexusUserCreds', usernameVariable: 'Admin', passwordVariable: 'nexus')]) {
+                       sh "mvn clean deploy -DskipTests -Dmaven.install.skip=true -DaltDeploymentRepository=deploymentRepo::default::${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_REPOSITORY}/ -DaltReleaseDeploymentPolicyId=deploymentRepo"
+                   }
+               }
+           }
+
     }
 }
